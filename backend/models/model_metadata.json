@@ -1,0 +1,78 @@
+{
+  "dataset": {
+    "total_images": 120,
+    "train_images": 84,
+    "val_images": 18,
+    "test_images": 18,
+    "classes": [
+      "Bacterial leaf blight",
+      "Brown spot",
+      "Leaf smut"
+    ]
+  },
+  "metrics": {
+    "train_accuracy_pct": 92.86,
+    "val_accuracy_pct": 94.44,
+    "test_accuracy_pct": 83.33,
+    "precision_macro_pct": 83.81,
+    "recall_macro_pct": 83.33,
+    "f1_macro_pct": 83.22,
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        1
+      ],
+      [
+        0,
+        2,
+        4
+      ]
+    ],
+    "per_class_metrics": {
+      "Bacterial leaf blight": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      },
+      "Brown spot": {
+        "precision": 0.7142857142857143,
+        "recall": 0.8333333333333334,
+        "f1-score": 0.7692307692307693,
+        "support": 6.0
+      },
+      "Leaf smut": {
+        "precision": 0.8,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7272727272727273,
+        "support": 6.0
+      },
+      "accuracy": 0.8333333333333334,
+      "macro avg": {
+        "precision": 0.8380952380952381,
+        "recall": 0.8333333333333334,
+        "f1-score": 0.8321678321678322,
+        "support": 18.0
+      },
+      "weighted avg": {
+        "precision": 0.8380952380952381,
+        "recall": 0.8333333333333334,
+        "f1-score": 0.8321678321678322,
+        "support": 18.0
+      }
+    }
+  },
+  "model_architecture": "MobileNetV2 Transfer Learning + Fine Tuning",
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "default_confidence_threshold_pct": 70.0
+}

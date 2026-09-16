@@ -1,0 +1,47 @@
+# Node dependencies & build outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.npm/
+
+# Python Virtual Environments
+.venv/
+backend/.venv/
+env/
+venv/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+*/.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Environment & Secrets
+.env.local
+.env.*.local
+*.log
+
+# Databases & local state
+backend/farmguard.db
+*.sqlite3
+
+# Uploads & Temp cache
+backend/uploads/*
+!backend/uploads/.gitkeep
+tmp/
+scratch/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

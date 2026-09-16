@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="12" fill="#0f291e"/>
+  <path d="M24 10C16 10 13 18 13 25C13 32 18 36 24 38C30 36 35 32 35 25C35 15 28 10 24 10Z" fill="url(#leafGrad)"/>
+  <path d="M24 14V34" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M24 20L19 23" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round"/>
+  <path d="M24 25L29 28" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round"/>
+  <circle cx="34" cy="14" r="3" fill="#4ade80"/>
+</svg>

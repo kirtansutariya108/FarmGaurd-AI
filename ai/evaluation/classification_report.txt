@@ -1,0 +1,29 @@
+RICE LEAF DISEASE CLASSIFICATION REPORT (HELD-OUT TEST SET)
+=================================================================
+
+Dataset Split: Train=96, Val=12, Test=12 (Total: 120)
+Training Accuracy:   91.67%
+Validation Accuracy: 83.33%
+Test Accuracy:       83.33%
+Macro Precision:     86.67%
+Macro Recall:        83.33%
+Macro F1-Score:      81.48%
+
+Detailed Per-Class Performance:
+-----------------------------------------------------------------
+                       precision    recall  f1-score   support
+
+Bacterial leaf blight     0.8000    1.0000    0.8889         4
+           Brown spot     0.8000    1.0000    0.8889         4
+            Leaf smut     1.0000    0.5000    0.6667         4
+
+             accuracy                         0.8333        12
+            macro avg     0.8667    0.8333    0.8148        12
+         weighted avg     0.8667    0.8333    0.8148        12
+
+
+Confusion Matrix (Rows: Actual, Cols: Predicted):
+-----------------------------------------------------------------
+  Bacterial leaf blight    : [4 0 0]
+  Brown spot               : [0 4 0]
+  Leaf smut                : [1 1 2]

@@ -1,0 +1,59 @@
+{
+  "model_name": "rice_leaf_disease_model",
+  "model_architecture": "MobileNetV2 (ImageNet) + GlobalAveragePooling2D + Dropout(0.3) + Dense(3, softmax)",
+  "input_size": [
+    224,
+    224,
+    3
+  ],
+  "number_of_classes": 3,
+  "classes": [
+    "Bacterial leaf blight",
+    "Brown spot",
+    "Leaf smut"
+  ],
+  "preprocessing": "RGB, resize(224, 224), float32, normalized [/ 255.0], batch dimension",
+  "data_augmentation": [
+    "RandomFlip('horizontal')",
+    "RandomRotation(0.08)",
+    "RandomZoom(0.08)",
+    "RandomTranslation(0.05, 0.05)",
+    "RandomContrast(0.1)"
+  ],
+  "confidence_threshold_pct": 70.0,
+  "training_dataset": {
+    "total_images": 120,
+    "classes": [
+      "Bacterial leaf blight",
+      "Brown spot",
+      "Leaf smut"
+    ],
+    "images_per_class": 40
+  },
+  "experimental_metrics": {
+    "training_accuracy_pct": 91.67,
+    "validation_accuracy_pct": 83.33,
+    "test_accuracy_pct": 83.33,
+    "macro_precision_pct": 86.67,
+    "macro_recall_pct": 83.33,
+    "macro_f1_pct": 81.48
+  },
+  "confusion_matrix": [
+    [
+      4,
+      0,
+      0
+    ],
+    [
+      0,
+      4,
+      0
+    ],
+    [
+      1,
+      1,
+      2
+    ]
+  ],
+  "created_at": "2026-09-16T16:56:19.656931+00:00"
+}
