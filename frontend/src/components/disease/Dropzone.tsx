@@ -64,9 +64,10 @@ export const Dropzone: React.FC<DropzoneProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {['Rice', 'Tomato', 'Potato', 'Bell Pepper'].map(crop => (
+          {['Rice', 'Tomato'].map(crop => (
             <button
               key={crop}
+              type="button"
               onClick={() => setSelectedCrop(crop)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 selectedCrop === crop

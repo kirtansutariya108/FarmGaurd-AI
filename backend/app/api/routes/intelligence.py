@@ -13,10 +13,11 @@ router = APIRouter(tags=["Farm Intelligence"])
 
 
 @router.post("/farm-intelligence", response_model=ApiResponse)
+@router.post("/intelligence/farm-analysis", response_model=ApiResponse)
 async def generate_farm_intelligence(payload: FarmIntelligenceRequest):
     """
     Synthesizes AI disease diagnosis with live hyper-local weather telemetry.
-    Reuses existing weather service / geocoding and generates deterministic agronomic recommendations.
+    Reuses existing Open-Meteo weather service / geocoding and generates deterministic agronomic recommendations.
     """
     target_lat: Optional[float] = payload.latitude
     target_lng: Optional[float] = payload.longitude
@@ -46,6 +47,7 @@ async def generate_farm_intelligence(payload: FarmIntelligenceRequest):
     intelligence_data = farm_intelligence_service.generate_advisory(
         disease=payload.disease,
         confidence=payload.confidence,
+        crop=payload.crop,
         weather=weather_data
     )
 
@@ -53,3 +55,4 @@ async def generate_farm_intelligence(payload: FarmIntelligenceRequest):
         data=intelligence_data.model_dump(),
         message="Farm AI intelligence generated successfully."
     )
+

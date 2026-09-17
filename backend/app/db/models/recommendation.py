@@ -9,9 +9,9 @@ from app.db.base import Base
 class Recommendation(Base):
     __tablename__ = "recommendations"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"rec-{uuid.uuid4().hex[:8]}")
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    farm_id: Mapped[str] = mapped_column(String, ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"rec-{uuid.uuid4().hex[:8]}")
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    farm_id: Mapped[str] = mapped_column(String(64), ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
     category: Mapped[str] = mapped_column(String(50), default="General")  # Disease, Irrigation, Weather, Field Care, General
     status: Mapped[str] = mapped_column(String(50), default="Today")      # Urgent, Today, Monitor, Completed
     priority: Mapped[str] = mapped_column(String(20), default="Medium")   # High, Medium, Low

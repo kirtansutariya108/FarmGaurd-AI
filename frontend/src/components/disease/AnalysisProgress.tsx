@@ -43,10 +43,10 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ onComplete, 
 
       <div>
         <h3 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center justify-center gap-2">
-          Analyzing Rice Leaf Foliage... <Sparkles className="w-5 h-5 text-amber-500" />
+          Analyzing Foliage with Farm AI... <Sparkles className="w-5 h-5 text-amber-500" />
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          {statusText || 'Evaluating visual anomalies via FastAPI Neural Network Service'}
+          {statusText || 'Evaluating visual anomalies via FastAPI MobileNetV2 Neural Network'}
         </p>
       </div>
 
@@ -92,8 +92,9 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ onComplete, 
 
       <div className="flex items-center justify-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Connected to backend: POST /predict</span>
+        <span>Inference pipeline: POST /api/predict</span>
       </div>
+
     </Card>
   );
 };

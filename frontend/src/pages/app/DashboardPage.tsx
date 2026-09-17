@@ -6,7 +6,8 @@ import { CropHealthCard } from '../../components/dashboard/CropHealthCard';
 import { AIFarmInsightCard } from '../../components/dashboard/AIFarmInsightCard';
 import { QuickActions } from '../../components/dashboard/QuickActions';
 import { RecentActivity } from '../../components/dashboard/RecentActivity';
-import { mockWeatherService } from '../../services/mockWeatherService';
+import { weatherService } from '../../services/weatherService';
+import { historyService } from '../../services/historyService';
 import { WeatherData } from '../../types/weather';
 import { mockWeatherData } from '../../data/mockWeather';
 import { 
@@ -24,26 +25,48 @@ export const DashboardPage: React.FC = () => {
   const { selectedFarm, t, user } = useApp();
   const [weather, setWeather] = useState<WeatherData>(mockWeatherData);
 
-  useEffect(() => {
-    mockWeatherService.getCurrentWeather(selectedFarm?.location).then(w => setWeather(w));
-  }, [selectedFarm]);
-
   const activeFarm = selectedFarm || {
     id: 'farm-1',
     name: 'Green Valley Farm',
     location: 'Vadodara, Gujarat',
     crop: 'Tomato',
-    healthScore: 82,
-    soilMoisture: 32,
+    healthScore: 88,
+    soilMoisture: 38,
     diseaseRisk: 'Low',
     lastIrrigationDaysAgo: 2,
   };
 
+  const latestScan = historyService.getHistory()[0];
+
+  useEffect(() => {
+    let isMounted = true;
+    const city = activeFarm.location ? activeFarm.location.split(',')[0].trim() : 'Vadodara';
+
+    weatherService.getWeatherByCity(city)
+      .then(w => {
+        if (isMounted) setWeather(w);
+      })
+      .catch(err => {
+        console.warn('Could not load live Open-Meteo weather on dashboard:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFarm.location]);
+
+  // Compute dynamic health & risk based on latest scan
+  const computedRisk = latestScan?.status === 'Needs Attention' ? 'Elevated' : latestScan?.status === 'Uncertain' ? 'Moderate' : 'Low';
+  const computedHealthScore = latestScan?.status === 'Needs Attention' ? 76 : latestScan?.status === 'Uncertain' ? 82 : 92;
+
   const getInsightText = () => {
-    if (activeFarm.crop === 'Potato') {
-      return `Your Potato crop in ${activeFarm.location} is in vegetative stage with healthy foliage (94/100). Moisture is optimal at 48%. No immediate irrigation required today.`;
+    if (latestScan) {
+      if (latestScan.status === 'Needs Attention') {
+        return `Recent scan on ${latestScan.crop} detected ${latestScan.condition} (${latestScan.confidence}% confidence). Review field actions in the Disease Scanner.`;
+      }
+      return `Latest ${latestScan.crop} scan (${latestScan.condition}) indicates healthy foliage (${latestScan.confidence}%). Current ambient temperature is ${weather.currentTemp}°C with ${weather.humidity}% humidity.`;
     }
-    return `Your latest ${activeFarm.crop} leaf scan looks healthy, while soil moisture is approaching the lower range (${activeFarm.soilMoisture}%). Rain is possible tomorrow (30%); inspect field conditions before the next irrigation cycle.`;
+    return `Your latest ${activeFarm.crop} leaf scan looks healthy, with soil moisture at ${activeFarm.soilMoisture}%. Check the weather forecast before your next irrigation cycle.`;
   };
 
   return (
@@ -82,7 +105,7 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <StatCard
           label={t.dashboard.cropHealth}
-          value={activeFarm.healthScore}
+          value={computedHealthScore}
           subvalue="/ 100"
           icon={Activity}
           variant="emerald"
@@ -91,10 +114,10 @@ export const DashboardPage: React.FC = () => {
 
         <StatCard
           label={t.dashboard.diseaseRisk}
-          value={activeFarm.diseaseRisk}
+          value={computedRisk}
           subvalue="Level"
           icon={AlertTriangle}
-          variant="amber"
+          variant={computedRisk === 'Elevated' ? 'amber' : computedRisk === 'Moderate' ? 'amber' : 'emerald'}
           trend="Last scan: Today"
         />
 
@@ -126,7 +149,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* 4. Core Diagnostic & Weather Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CropHealthCard score={activeFarm.healthScore} cropName={activeFarm.crop} />
+        <CropHealthCard score={computedHealthScore} cropName={activeFarm.crop} />
         <WeatherSummaryCard weather={weather} />
       </div>
 

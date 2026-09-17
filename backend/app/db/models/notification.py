@@ -9,8 +9,8 @@ from app.db.base import Base
 class Notification(Base):
     __tablename__ = "notifications"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"notif-{uuid.uuid4().hex[:8]}")
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"notif-{uuid.uuid4().hex[:8]}")
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(50), default="system")  # scanner, weather, irrigation, system

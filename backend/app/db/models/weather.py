@@ -9,8 +9,8 @@ from app.db.base import Base
 class WeatherSnapshot(Base):
     __tablename__ = "weather_snapshots"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"wthr-{uuid.uuid4().hex[:8]}")
-    farm_id: Mapped[str] = mapped_column(String, ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"wthr-{uuid.uuid4().hex[:8]}")
+    farm_id: Mapped[str] = mapped_column(String(64), ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     current_temp: Mapped[float] = mapped_column(Float, nullable=False)
     condition: Mapped[str] = mapped_column(String(100), nullable=False)

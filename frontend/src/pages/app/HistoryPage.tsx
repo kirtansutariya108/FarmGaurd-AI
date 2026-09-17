@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { initialMockHistory } from '../../data/mockHistory';
+import React, { useState, useEffect } from 'react';
+import { historyService } from '../../services/historyService';
 import { ScanHistoryItem } from '../../types/history';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -18,9 +18,13 @@ import {
 } from 'lucide-react';
 
 export const HistoryPage: React.FC = () => {
-  const [historyItems, setHistoryItems] = useState<ScanHistoryItem[]>(initialMockHistory);
+  const [historyItems, setHistoryItems] = useState<ScanHistoryItem[]>(() => historyService.getHistory());
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('All');
+
+  useEffect(() => {
+    setHistoryItems(historyService.getHistory());
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

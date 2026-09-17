@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
@@ -9,6 +10,7 @@ import { FarmIntelligenceCard } from './FarmIntelligenceCard';
 import { DiseaseResult } from '../../types/disease';
 import { FarmIntelligenceData } from '../../types/intelligence';
 import { farmIntelligenceService } from '../../services/farmIntelligenceService';
+import { historyService } from '../../services/historyService';
 import { 
   AlertTriangle, 
   ShieldCheck, 
@@ -31,6 +33,13 @@ export const DiseaseResultCard: React.FC<DiseaseResultCardProps> = ({ result, on
   const [intelligence, setIntelligence] = useState<FarmIntelligenceData | null>(null);
   const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(false);
   const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (result) {
+      historyService.saveScan(result);
+      setSaved(true);
+    }
+  }, [result]);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,6 +73,7 @@ export const DiseaseResultCard: React.FC<DiseaseResultCardProps> = ({ result, on
       try {
         const intel = await farmIntelligenceService.getFarmIntelligence({
           disease: result.primaryCondition,
+          crop: result.cropName,
           confidence: result.confidence,
           latitude: lat,
           longitude: lng,
