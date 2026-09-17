@@ -36,10 +36,21 @@ export const DiseaseScannerPage: React.FC = () => {
       let fileToUpload: File;
 
       if (typeof selectedImage === 'string') {
-        // Fetch sample image URL and convert to File
+        // Fetch sample image URL and convert to File with a descriptive filename
+        const sampleUrlToName: Record<string, string> = {
+          'earlyBlight': 'sample_early_blight.jpg',
+          'healthy': 'sample_healthy_leaf.jpg',
+          'lowConfidence': 'sample_low_confidence.jpg',
+        };
+        const matchedName = Object.entries(sampleUrlToName).find(([key]) =>
+          selectedImage.includes(key)
+        );
+        const fileName = matchedName?.[1] || 'sample_leaf.jpg';
+
         const res = await fetch(selectedImage);
+        if (!res.ok) throw new Error('Could not download the sample image. Please try uploading your own photo.');
         const blob = await res.blob();
-        fileToUpload = new File([blob], 'sample_leaf.jpg', { type: blob.type || 'image/jpeg' });
+        fileToUpload = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
       } else {
         fileToUpload = selectedImage;
       }
@@ -54,8 +65,9 @@ export const DiseaseScannerPage: React.FC = () => {
       setResult(diagnosis);
     } catch (err: any) {
       console.error('Diagnosis failed:', err);
+
       setErrorMessage(
-        err.message || 'Failed to communicate with the prediction backend at http://127.0.0.1:8000/predict'
+        err.message || 'Scan analysis failed. Please try again with a clearer, well-lit leaf photo.'
       );
     } finally {
       setIsAnalyzing(false);
@@ -103,7 +115,7 @@ export const DiseaseScannerPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
             <div>
-              <p className="text-xs font-bold">Prediction Request Failed</p>
+              <p className="text-xs font-bold">Scan Failed</p>
               <p className="text-xs text-rose-600 dark:text-rose-300 mt-0.5">{errorMessage}</p>
             </div>
           </div>

@@ -30,3 +30,14 @@ export interface ImageQualityCheck {
   isLeafCentered: boolean;
   notes: string;
 }
+
+export interface BackendPredictResponse {
+  success: boolean;
+  status: 'success' | 'low_confidence' | 'unsupported_image' | 'error';
+  crop?: string | null;
+  disease?: string | null;
+  class_name?: string | null;
+  confidence: number;
+  message?: string | null;
+}
+

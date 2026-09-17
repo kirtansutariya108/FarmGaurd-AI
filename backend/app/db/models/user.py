@@ -8,7 +8,7 @@ from app.db.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"user-{uuid.uuid4().hex[:8]}")
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"user-{uuid.uuid4().hex[:8]}")
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     phone: Mapped[str] = mapped_column(String(50), index=True, nullable=False)

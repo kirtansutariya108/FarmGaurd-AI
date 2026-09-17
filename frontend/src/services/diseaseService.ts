@@ -1,80 +1,232 @@
-import { DiseaseResult, DiseaseStatus, DiseasePrediction } from '../types/disease';
+/**
+ * diseaseService.ts
+ *
+ * Connects the frontend scanner to the FastAPI Plant Disease AI Backend (POST /api/predict).
+ * Handles multipart/form-data upload, 16-class translation to human-readable diagnoses,
+ * confidence normalization, and low-confidence classification safeguards.
+ */
 
-export interface PredictionApiResponse {
-  success?: boolean;
-  status?: 'prediction' | 'uncertain';
-  disease?: string | null;
-  suggested_condition?: string;
-  confidence: number;
-  threshold_pct?: number;
-  explanation?: string;
-  message?: string;
-  probabilities?: Record<string, number>;
-  error?: string;
-  detail?: string;
-}
+import { DiseaseResult, DiseaseStatus, DiseasePrediction, BackendPredictResponse } from '../types/disease';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-const RICE_DISEASE_METADATA: Record<string, {
+// ─── Human-Readable Class Mapping (16 Trained Classes) ─────────────────────────
+
+export const CLASS_NAME_MAP: Record<string, string> = {
+  // Tomato (10 classes)
+  'bacterial_spot': 'Bacterial Spot',
+  'early_blight': 'Early Blight',
+  'healthy': 'Healthy Foliage',
+  'late_blight': 'Late Blight',
+  'leaf_mold': 'Leaf Mold',
+  'mosaic_virus': 'Mosaic Virus',
+  'septoria_leaf_spot': 'Septoria Leaf Spot',
+  'target_spot': 'Target Spot',
+  'twospotted_spider_mite': 'Two-Spotted Spider Mite',
+  'yellow_leaf_curl_virus': 'Yellow Leaf Curl Virus',
+
+  // Rice (6 classes)
+  'rice_bacterial_leaf_blight': 'Bacterial Leaf Blight',
+  'rice_brown_spot': 'Brown Spot',
+  'rice_healthy': 'Healthy Foliage',
+  'rice_leaf_blast': 'Leaf Blast',
+  'rice_leaf_scald': 'Leaf Scald',
+  'rice_narrow_brown_spot': 'Narrow Brown Spot',
+};
+
+// ─── Agronomic Profiles for 16 Classes ─────────────────────────────────────────
+
+const DISEASE_PROFILES: Record<string, {
   status: DiseaseStatus;
   isHealthy: boolean;
   findings: string;
   nextSteps: string[];
   description: string;
 }> = {
-  'Bacterial leaf blight': {
+  'bacterial_spot': {
     status: 'Needs Attention',
     isHealthy: false,
-    findings: 'Visual lesions observed along leaf tips and margins with wavy margins and yellowish-to-gray discoloration, characteristic of Xanthomonas oryzae (Bacterial Leaf Blight).',
+    findings: 'Small, water-soaked dark circular lesions with greasy appearance on leaf lamina — characteristic of Xanthomonas bacterial spot.',
     nextSteps: [
-      'Drain excess standing water temporarily to lower relative humidity in the field.',
-      'Avoid excess nitrogen application; ensure balanced potash (potassium) fertilization.',
-      'Clean agricultural implements to prevent spreading bacteria across adjacent plots.',
-      'Consult local agricultural extension or apply recommended bio-bactericide if threshold is exceeded.'
+      'Avoid overhead sprinkler irrigation to minimize splash transmission.',
+      'Apply preventive copper-based bactericidal spray during humid periods.',
+      'Sanitize pruning tools and stakes between plant rows.',
     ],
-    description: 'Bacterial infection characterized by water-soaked to yellowish stripes along leaf margins.'
+    description: 'Bacterial foliar infection causing dark water-soaked spots with yellow halos.',
   },
-  'Brown spot': {
+  'early_blight': {
     status: 'Needs Attention',
     isHealthy: false,
-    findings: 'Small circular to oval brown necrotic spots with yellowish halos scattered across the leaf blade, consistent with Bipolaris oryzae (Brown Spot).',
+    findings: 'Concentric target-like brown ring lesions primarily on mature lower foliage — consistent with Alternaria solani (Early Blight).',
     nextSteps: [
-      'Ensure balanced soil nutrition with adequate potassium, silica, and micronutrients.',
-      'Maintain consistent paddy soil moisture; avoid severe dry-wet soil stress.',
-      'Remove heavily infested stubble during post-harvest land preparation.',
-      'Inspect field regularly over the next 48 to 72 hours for spot expansion.'
+      'Prune infected lower leaves touching soil surface.',
+      'Maintain adequate plant spacing to improve canopy ventilation.',
+      'Apply protective organic or bio-fungicide if lesions spread to upper canopy.',
     ],
-    description: 'Fungal foliar disease causing oval or cylindrical brown lesions with yellow halos.'
+    description: 'Fungal disease causing concentric bullseye lesions on older leaves.',
   },
-  'Leaf smut': {
-    status: 'Needs Attention',
-    isHealthy: false,
-    findings: 'Slightly raised, angular black spots or pustules scattered across the rice leaf surface, consistent with Entyloma oryzae (Leaf Smut).',
-    nextSteps: [
-      'Ensure adequate plant spacing to facilitate sunlight penetration and canopy aeration.',
-      'Avoid over-fertilization with nitrogenous fertilizers.',
-      'Monitor flag leaves during heading and grain filling stages.',
-      'Apply protective foliar sprays if disease pressure increases significantly.'
-    ],
-    description: 'Fungal disease producing small, angular, lead-black sori on mature foliage.'
-  },
-  'Healthy': {
+  'healthy': {
     status: 'Healthy-looking',
     isHealthy: true,
-    findings: 'Vibrant green chlorophyll pigmentation and uniform rice leaf blade architecture. No significant pathogen lesions or necrotic spots detected.',
+    findings: 'Vibrant chlorophyll pigmentation with uniform leaf lamina structure. No pathogen lesion patterns detected.',
     nextSteps: [
-      'Continue routine monitoring and standard irrigation management.',
-      'Maintain nutrient application schedule aligned with the current growth stage.',
-      'Record leaf health scans once every 5 to 7 days.'
+      'Maintain standard fertigation and drip irrigation schedules.',
+      'Perform regular foliar scouting every 5–7 days.',
+      'Record this scan as a healthy reference benchmark.',
     ],
-    description: 'Normal chlorophyll levels and healthy vegetative leaf foliage.'
-  }
+    description: 'Normal green foliage with no active pathogen symptoms.',
+  },
+  'late_blight': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Large irregular dark water-soaked lesions with pale borders on leaf tips — typical of Phytophthora infestans (Late Blight).',
+    nextSteps: [
+      'Inspect underside of leaves for white sporulation during morning hours.',
+      'Improve drainage and reduce foliage moisture duration.',
+      'Isolate affected plants and apply protective fungicide if conditions remain cool and wet.',
+    ],
+    description: 'Aggressive water-mold pathogen causing rapid dark necrotic lesions.',
+  },
+  'leaf_mold': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Pale greenish-yellow spots on upper leaf surface with velvety olive-green mold on the underside — consistent with Passalora fulva.',
+    nextSteps: [
+      'Increase greenhouse or field air circulation and lower relative humidity.',
+      'Prune lower dense foliage to promote airflow.',
+      'Water plants at base to prevent wetting leaf surfaces.',
+    ],
+    description: 'Fungal disease thriving in high humidity with olive fungal growth on leaf undersides.',
+  },
+  'mosaic_virus': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Mottled light and dark green mosaic patterns with leaf puckering and distorted lamina growth — indicative of Mosaic Virus.',
+    nextSteps: [
+      'Rogue out and safely dispose of severely stunted or infected plants.',
+      'Control aphid and whitefly vectors to prevent viral transmission.',
+      'Wash hands and disinfect tools thoroughly before handling healthy crops.',
+    ],
+    description: 'Viral pathogen causing mottled leaf discoloration and distorted foliage.',
+  },
+  'septoria_leaf_spot': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Numerous small circular spots with gray-white centers and dark brown margins — characteristic of Septoria lycopersici.',
+    nextSteps: [
+      'Remove heavily spotted lower leaves and dispose away from field.',
+      'Apply organic mulch to prevent rain-splash from soil.',
+      'Apply copper fungicide protectant if disease pressure is high.',
+    ],
+    description: 'Fungal disease causing abundant small circular spots with gray centers.',
+  },
+  'target_spot': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Brown circular lesions with concentric rings and distinct margins — characteristic of Corynespora cassiicola (Target Spot).',
+    nextSteps: [
+      'Promote good canopy ventilation through proper staking and pruning.',
+      'Avoid high nitrogen fertilization that produces excessively dense foliage.',
+      'Apply approved protective fungicide if lesions escalate.',
+    ],
+    description: 'Fungal infection causing target-like lesions on foliage and stems.',
+  },
+  'twospotted_spider_mite': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Fine yellow-white stippling across upper leaf surface with delicate webbing visible on leaf undersides — typical of Tetranychus urticae.',
+    nextSteps: [
+      'Spray leaf undersides with strong water spray or neem oil solution.',
+      'Introduce or support natural predatory mites (Phytoseiidae).',
+      'Avoid broad-spectrum insecticides that kill beneficial predatory insects.',
+    ],
+    description: 'Microscopic arachnid pests causing yellow stippling and fine silken webs.',
+  },
+  'yellow_leaf_curl_virus': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Severe upward leaf curling, yellowing of leaf margins, and stunted inter-nodal growth — consistent with Tomato Yellow Leaf Curl Virus (TYLCV).',
+    nextSteps: [
+      'Deploy yellow sticky traps to monitor and control whitefly populations.',
+      'Use insect netting or reflective mulches in vulnerable field beds.',
+      'Remove heavily stunted infected plants to reduce vector acquisition source.',
+    ],
+    description: 'Whitefly-transmitted virus causing pronounced upward curling and yellow margins.',
+  },
+  'rice_bacterial_leaf_blight': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Water-soaked wavy lesions along leaf tips and margins progressing inward — consistent with Xanthomonas oryzae pv. oryzae.',
+    nextSteps: [
+      'Drain standing field water temporarily to lower microclimate humidity.',
+      'Halt excess nitrogen top-dressing; maintain balanced potassium fertilization.',
+      'Clean and sanitize agricultural implements before moving between plots.',
+    ],
+    description: 'Bacterial pathogen causing elongated water-soaked stripes on rice foliage.',
+  },
+  'rice_brown_spot': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Oval to circular brown necrotic spots with yellow halos across the leaf blade — characteristic of Bipolaris oryzae (Brown Spot).',
+    nextSteps: [
+      'Ensure balanced soil nutrition with adequate potassium, silica, and micronutrients.',
+      'Maintain steady paddy moisture to prevent wet-dry soil stress cycles.',
+      'Scout adjacent tillers every 48–72 hours for spot density expansion.',
+    ],
+    description: 'Fungal foliar disease producing oval brown spots with yellowish halos.',
+  },
+  'rice_healthy': {
+    status: 'Healthy-looking',
+    isHealthy: true,
+    findings: 'Uniform chlorophyll distribution across rice leaf blade with no lesion or pustule patterns detected.',
+    nextSteps: [
+      'Continue standard paddy water management and fertilizer regime.',
+      'Conduct routine visual scouting at 5–7 day intervals.',
+      'Maintain clean bunds and irrigation channels.',
+    ],
+    description: 'Healthy rice foliage showing normal green vigor.',
+  },
+  'rice_leaf_blast': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Spindle-shaped or diamond-like lesions with gray-white centers and reddish-brown borders — consistent with Magnaporthe oryzae (Rice Blast).',
+    nextSteps: [
+      'Avoid excessive nitrogen fertilization that promotes lush vulnerable tissue.',
+      'Maintain consistent water layer in field to buffer canopy microclimate.',
+      'Apply recommended blast fungicide (e.g., tricyclazole) if lesions multiply on flag leaves.',
+    ],
+    description: 'Major fungal disease producing diamond/spindle-shaped lesions on rice leaves.',
+  },
+  'rice_leaf_scald': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Zonate patterned lesions with alternating light and dark brown bands starting from leaf tips — characteristic of Microdochium oryzae.',
+    nextSteps: [
+      'Ensure balanced potassium fertilization to bolster foliar resistance.',
+      'Avoid applying excessive nitrogen during active tillering.',
+      'Remove heavily scalded plant debris after harvest.',
+    ],
+    description: 'Fungal pathogen producing zonate chevron-like scalded leaf patterns.',
+  },
+  'rice_narrow_brown_spot': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Short, linear narrow brown spots parallel to leaf veins — consistent with Cercospora janseana (Narrow Brown Spot).',
+    nextSteps: [
+      'Maintain balanced soil potassium and nitrogen levels.',
+      'Monitor heading stage tillers for spot density progression.',
+      'Follow local agricultural extension guidance for seasonal foliar sprays.',
+    ],
+    description: 'Fungal disease forming narrow linear brown stripes parallel to veins.',
+  },
 };
+
+// ─── Service API ──────────────────────────────────────────────────────────────
 
 export const diseaseService = {
   /**
-   * Uploads leaf image to FastAPI ML backend at POST /predict with multipart/form-data ("file")
+   * Uploads the leaf image to POST /api/predict using multipart/form-data.
+   * Processes the backend AI prediction and returns a typed DiseaseResult.
    */
   async predictLeafDisease(
     imageFile: File,
@@ -83,104 +235,101 @@ export const diseaseService = {
     const formData = new FormData();
     formData.append('file', imageFile);
 
-    const response = await fetch(`${API_BASE_URL}/predict`, {
-      method: 'POST',
-      body: formData,
-    });
+    const endpointUrl = `${API_BASE_URL}/api/predict`;
+
+    let response: Response;
+    try {
+      // Do NOT set Content-Type header manually; fetch automatically sets the multipart boundary
+      response = await fetch(endpointUrl, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (networkErr: any) {
+      console.error('Network error connecting to Backend AI:', networkErr);
+      throw new Error('Could not connect to FarmGuard AI backend. Please ensure the backend server is running.');
+    }
 
     if (!response.ok) {
-      let errorMessage = `Server error (${response.status})`;
+      let errorMessage = 'Prediction failed';
       try {
         const errorData = await response.json();
-        errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+        errorMessage = errorData.detail || errorData.error || errorData.message || errorMessage;
       } catch {
-        // Use default error message if JSON parsing fails
+        errorMessage = `Server returned HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);
     }
 
-    const data: PredictionApiResponse = await response.json();
+    const data: BackendPredictResponse = await response.json();
 
-    if (data.success === false && data.error) {
-      throw new Error(data.error);
-    }
+    // 1. Process Confidence Score (backend returns 0.0 - 1.0)
+    const rawConf = data.confidence ?? 0;
+    const confidencePct = rawConf <= 1.0 ? parseFloat((rawConf * 100).toFixed(2)) : parseFloat(rawConf.toFixed(2));
 
-    const isUncertain = data.status === 'uncertain' || !data.disease;
-    const diseaseName = data.disease || data.suggested_condition || 'Inconclusive Foliar Anomaly';
-    const confidence = typeof data.confidence === 'number' ? data.confidence : parseFloat(String(data.confidence)) || 0;
+    // 2. Class Key & Human-Readable Mapping
+    const classKey = (data.class_name || data.disease || '').toLowerCase().trim();
+    const humanReadable = CLASS_NAME_MAP[classKey] || (classKey ? classKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Uncertain Condition');
 
-    // Build topPredictions array from probabilities if provided by model
-    let topPredictions: DiseasePrediction[] = [];
-    if (data.probabilities && Object.keys(data.probabilities).length > 0) {
-      topPredictions = Object.entries(data.probabilities)
-        .map(([name, prob]) => ({
-          diseaseName: name,
-          confidence: Math.round(prob),
-          description: RICE_DISEASE_METADATA[name]?.description || `Condition: ${name}`
-        }))
-        .sort((a, b) => b.confidence - a.confidence);
-    } else {
-      topPredictions = [
-        {
-          diseaseName,
-          confidence: Math.round(confidence),
-          description: RICE_DISEASE_METADATA[diseaseName]?.description || `Condition: ${diseaseName}`
-        }
-      ];
-    }
+    // 3. Low Confidence & Unsupported Image Guard
+    const isUnsupported = data.status === 'unsupported_image';
+    const isLowConfidence = isUnsupported || data.status === 'low_confidence' || confidencePct < 60;
 
-    if (isUncertain) {
-      return {
-        id: `scan-${Date.now()}`,
-        cropName: options.cropName || 'Rice',
-        primaryCondition: 'Uncertain Diagnosis',
-        confidence: Math.round(confidence * 100) / 100,
-        status: 'Uncertain' as DiseaseStatus,
-        isLowConfidence: true,
-        isHealthy: false,
-        visualFindings: data.message || `Unable to confidently identify the disease (highest model confidence is ${confidence}%, below the ${data.threshold_pct || 70}% threshold).`,
-        nextSteps: [
-          'Retake photo under uniform daylight focusing closely on the affected leaf area.',
-          'Ensure the leaf blade fills at least 60% of the image frame.',
-          'Avoid glare, motion blur, and heavy shadows.',
-          'If symptoms spread, scout adjacent tillers and monitor closely.'
-        ],
-        topPredictions,
-        scannedAt: 'Just now',
-        imageUrl: URL.createObjectURL(imageFile),
-        farmId: options.farmId,
-        farmName: options.farmName,
-      };
-    }
-
-    // Confident prediction flow
-    const meta = RICE_DISEASE_METADATA[diseaseName] || {
-      status: 'Needs Attention' as DiseaseStatus,
-      isHealthy: false,
-      findings: data.explanation || `Visual patterns corresponding to ${diseaseName} identified with a model confidence of ${confidence}%.`,
+    // 4. Determine Crop & Agronomic Profile
+    const detectedCrop = isUnsupported ? 'Unknown' : (data.crop || options.cropName || (classKey.startsWith('rice_') ? 'Rice' : 'Tomato'));
+    const profile = DISEASE_PROFILES[classKey] || {
+      status: (isLowConfidence ? 'Uncertain' : 'Needs Attention') as DiseaseStatus,
+      isHealthy: !isUnsupported && classKey.includes('healthy'),
+      findings: data.message || `Visual analysis indicates pathology consistent with ${humanReadable}.`,
       nextSteps: [
-        'Inspect surrounding crop foliage for similar symptoms.',
-        'Ensure proper soil moisture and balanced nutrient supply.',
-        'Consult your local agronomist or extension office for targeted treatment.'
+        'Inspect leaf surface closely under uniform daylight.',
+        'Avoid overhead watering to minimize foliar moisture duration.',
+        'Consult your local agricultural extension officer for specific treatment.',
       ],
-      description: `Detected condition: ${diseaseName}.`
+      description: `Pathology classification for ${humanReadable}.`,
     };
+
+    // 5. Build Top Predictions
+    const topPredictions: DiseasePrediction[] = isUnsupported ? [] : [
+      {
+        diseaseName: humanReadable,
+        confidence: confidencePct,
+        description: profile.description,
+      },
+    ];
+
+    const localImageUrl = URL.createObjectURL(imageFile);
 
     return {
       id: `scan-${Date.now()}`,
-      cropName: options.cropName || 'Rice',
-      primaryCondition: diseaseName,
-      confidence: Math.round(confidence * 100) / 100,
-      status: meta.status,
-      isLowConfidence: false,
-      isHealthy: meta.isHealthy,
-      visualFindings: data.explanation || meta.findings,
-      nextSteps: meta.nextSteps,
+      cropName: detectedCrop,
+      primaryCondition: isUnsupported ? 'Unsupported Image Sample' : isLowConfidence ? 'Uncertain Classification' : humanReadable,
+      confidence: isUnsupported ? 0 : confidencePct,
+      status: isLowConfidence ? 'Uncertain' : profile.status,
+      isLowConfidence,
+      isHealthy: !isLowConfidence && profile.isHealthy,
+      visualFindings: isUnsupported
+        ? (data.message || 'Image not recognized as a supported crop image. Please upload a clear photo of a Tomato or Rice leaf.')
+        : isLowConfidence
+        ? (data.message || 'The leaf image could not be classified with high confidence. Please upload a clear, focused photo.')
+        : profile.findings,
+      nextSteps: isUnsupported
+        ? [
+            'Upload a clear, focused photograph of a Tomato or Rice leaf.',
+            'Ensure natural daylight illumination without heavy glare or deep shadows.',
+            'Position the camera 10–20 cm directly above the affected leaf lamina.',
+          ]
+        : isLowConfidence
+        ? [
+            'Retake photo under uniform daylight focusing directly on affected leaf.',
+            'Ensure the leaf fills at least 60% of the frame.',
+            'Avoid heavy glare, shadows, and blurry focus.',
+          ]
+        : profile.nextSteps,
       topPredictions,
       scannedAt: 'Just now',
-      imageUrl: URL.createObjectURL(imageFile),
+      imageUrl: localImageUrl,
       farmId: options.farmId,
       farmName: options.farmName,
     };
-  }
+  },
 };

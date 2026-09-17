@@ -1,0 +1,88 @@
+{
+  "model_name": "plant_disease_model.keras",
+  "num_classes": 16,
+  "class_names": [
+    "bacterial_spot",
+    "early_blight",
+    "healthy",
+    "late_blight",
+    "leaf_mold",
+    "mosaic_virus",
+    "rice_bacterial_leaf_blight",
+    "rice_brown_spot",
+    "rice_healthy",
+    "rice_leaf_blast",
+    "rice_leaf_scald",
+    "rice_narrow_brown_spot",
+    "septoria_leaf_spot",
+    "target_spot",
+    "twospotted_spider_mite",
+    "yellow_leaf_curl_virus"
+  ],
+  "input_shape": [
+    null,
+    224,
+    224,
+    3
+  ],
+  "output_shape": [
+    null,
+    16
+  ],
+  "load_time_seconds": 1.949,
+  "first_inference_ms": 4988.52,
+  "avg_subsequent_latency_ms": 207.8,
+  "evaluated_dataset_images_count": 46,
+  "ood_samples_tested": 6,
+  "ood_results": {
+    "pure_black_blank": {
+      "success": true,
+      "status": "success",
+      "crop": "Tomato",
+      "disease": "late_blight",
+      "class_name": "late_blight",
+      "confidence": 0.9826
+    },
+    "pure_white_blank": {
+      "success": true,
+      "status": "success",
+      "crop": "Tomato",
+      "disease": "late_blight",
+      "class_name": "late_blight",
+      "confidence": 0.6972
+    },
+    "pure_red_solid": {
+      "success": true,
+      "status": "low_confidence",
+      "crop": "Tomato",
+      "disease": "late_blight",
+      "class_name": "late_blight",
+      "confidence": 0.585,
+      "message": "The image could not be classified confidently. Please upload a clearer Tomato or Rice leaf image."
+    },
+    "pure_blue_sky_color": {
+      "success": true,
+      "status": "success",
+      "crop": "Tomato",
+      "disease": "late_blight",
+      "class_name": "late_blight",
+      "confidence": 0.8452
+    },
+    "pure_gray_road_color": {
+      "success": true,
+      "status": "success",
+      "crop": "Tomato",
+      "disease": "late_blight",
+      "class_name": "late_blight",
+      "confidence": 0.9059
+    },
+    "random_noise": {
+      "success": true,
+      "status": "success",
+      "crop": "Rice",
+      "disease": "rice_leaf_blast",
+      "class_name": "rice_leaf_blast",
+      "confidence": 0.7922
+    }
+  }
+}

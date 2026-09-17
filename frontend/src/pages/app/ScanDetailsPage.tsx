@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { mockDiseaseService } from '../../services/mockDiseaseService';
+import { historyService } from '../../services/historyService';
 import { DiseaseResult } from '../../types/disease';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -14,8 +15,8 @@ import {
   CheckCircle2, 
   Trash2, 
   Bookmark, 
-  ScanSearch,
-  Sparkles,
+  ScanSearch, 
+  Sparkles, 
   ShieldCheck
 } from 'lucide-react';
 
@@ -26,7 +27,12 @@ export const ScanDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (scanId) {
-      mockDiseaseService.getScanResultById(scanId).then(r => setResult(r));
+      const localDetail = historyService.getScanDetailById(scanId);
+      if (localDetail) {
+        setResult(localDetail);
+      } else {
+        mockDiseaseService.getScanResultById(scanId).then(r => setResult(r));
+      }
     }
   }, [scanId]);
 

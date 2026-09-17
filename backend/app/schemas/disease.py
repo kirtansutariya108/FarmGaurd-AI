@@ -39,3 +39,16 @@ class ImageQualityCheck(BaseModel):
     notes: str
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class PredictResponse(BaseModel):
+    success: bool = True
+    status: Literal["success", "low_confidence", "unsupported_image", "error"] = "success"
+    crop: Optional[str] = None
+    disease: Optional[str] = None
+    class_name: Optional[str] = None
+    confidence: float
+    message: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+

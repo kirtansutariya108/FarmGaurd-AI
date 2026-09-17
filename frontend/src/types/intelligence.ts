@@ -1,5 +1,6 @@
 export interface FarmIntelligenceRequest {
   disease: string;
+  crop?: string;
   confidence: number;
   latitude?: number;
   longitude?: number;
@@ -18,15 +19,30 @@ export interface WeatherSummary {
   uvIndex?: number;
 }
 
+export type WeatherRiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'UNAVAILABLE';
+export type SeverityLevel = 'low' | 'moderate' | 'high';
+
 export interface FarmIntelligenceData {
   disease: string;
+  crop?: string;
   confidence: number;
-  riskLevel: 'High' | 'Moderate' | 'Low' | string;
-  weatherRisk: 'High' | 'Elevated' | 'Moderate' | 'Normal' | 'Low' | string;
-  advisory: string;
-  actions: string[];
-  weatherFactors: string[];
+  severity?: SeverityLevel | string;
+  summary?: string;
+  weatherRisk: WeatherRiskLevel | string;
+  weatherAvailable?: boolean;
+  riskFactors?: string[];
+  immediateActions?: string[];
+  monitoringActions?: string[];
+  preventionActions?: string[];
+  weatherAdvice?: string[];
   weatherSummary?: WeatherSummary;
+  disclaimer?: string;
+
+  // Backwards compatibility
+  riskLevel?: 'High' | 'Moderate' | 'Low' | string;
+  advisory?: string;
+  actions?: string[];
+  weatherFactors?: string[];
 }
 
 export interface FarmIntelligenceApiResponse {
@@ -34,3 +50,4 @@ export interface FarmIntelligenceApiResponse {
   data: FarmIntelligenceData;
   message?: string;
 }
+

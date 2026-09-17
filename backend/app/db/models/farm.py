@@ -9,8 +9,8 @@ from app.db.base import Base
 class Farm(Base):
     __tablename__ = "farms"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"farm-{uuid.uuid4().hex[:8]}")
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"farm-{uuid.uuid4().hex[:8]}")
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -38,8 +38,8 @@ class Farm(Base):
 class FarmCrop(Base):
     __tablename__ = "farm_crops"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"crop-{uuid.uuid4().hex[:8]}")
-    farm_id: Mapped[str] = mapped_column(String, ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"crop-{uuid.uuid4().hex[:8]}")
+    farm_id: Mapped[str] = mapped_column(String(64), ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
     crop_name: Mapped[str] = mapped_column(String(100), nullable=False)  # Tomato, Potato, Pepper, etc.
     crop_variety: Mapped[str] = mapped_column(String(100), default="Standard Hybrid")
     growth_stage: Mapped[str] = mapped_column(String(50), default="Flowering")  # Seedling, Vegetative, Flowering, Fruiting, Maturity
@@ -57,8 +57,8 @@ class FarmCrop(Base):
 class CropCondition(Base):
     __tablename__ = "crop_conditions"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"cond-{uuid.uuid4().hex[:8]}")
-    farm_id: Mapped[str] = mapped_column(String, ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"cond-{uuid.uuid4().hex[:8]}")
+    farm_id: Mapped[str] = mapped_column(String(64), ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
     soil_moisture: Mapped[float] = mapped_column(Float, default=35.0)  # percentage
     temperature: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     humidity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

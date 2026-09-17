@@ -9,8 +9,8 @@ from app.db.base import Base
 class IrrigationRecommendation(Base):
     __tablename__ = "irrigation_recommendations"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"irrig-{uuid.uuid4().hex[:8]}")
-    farm_id: Mapped[str] = mapped_column(String, ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"irrig-{uuid.uuid4().hex[:8]}")
+    farm_id: Mapped[str] = mapped_column(String(64), ForeignKey("farms.id", ondelete="CASCADE"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="Recommended")  # Recommended, Monitor, Not Needed, Insufficient Data
     priority: Mapped[str] = mapped_column(String(20), default="Medium")      # High, Medium, Low
     headline: Mapped[str] = mapped_column(String(255), nullable=False)

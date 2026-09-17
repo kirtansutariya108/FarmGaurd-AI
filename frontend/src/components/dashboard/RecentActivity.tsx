@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
-import { initialMockHistory } from '../../data/mockHistory';
+import { historyService } from '../../services/historyService';
+import { ScanHistoryItem } from '../../types/history';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Calendar, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
 
 export const RecentActivity: React.FC = () => {
-  const recentItems = initialMockHistory.slice(0, 3);
+  const [recentItems, setRecentItems] = useState<ScanHistoryItem[]>(() => historyService.getHistory().slice(0, 3));
+
+  useEffect(() => {
+    setRecentItems(historyService.getHistory().slice(0, 3));
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

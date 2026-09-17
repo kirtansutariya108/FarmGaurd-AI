@@ -9,9 +9,9 @@ from app.db.base import Base
 class CropScan(Base):
     __tablename__ = "crop_scans"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"scan-{uuid.uuid4().hex[:8]}")
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    farm_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("farms.id", ondelete="SET NULL"), index=True, nullable=True)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"scan-{uuid.uuid4().hex[:8]}")
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    farm_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey("farms.id", ondelete="SET NULL"), index=True, nullable=True)
     crop: Mapped[str] = mapped_column(String(100), default="Tomato")
     primary_condition: Mapped[str] = mapped_column(String(255), default="Healthy")
     confidence: Mapped[float] = mapped_column(Float, default=0.0)  # percentage, e.g. 91.0
@@ -33,8 +33,8 @@ class CropScan(Base):
 class DiseasePrediction(Base):
     __tablename__ = "disease_predictions"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: f"pred-{uuid.uuid4().hex[:8]}")
-    scan_id: Mapped[str] = mapped_column(String, ForeignKey("crop_scans.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: f"pred-{uuid.uuid4().hex[:8]}")
+    scan_id: Mapped[str] = mapped_column(String(64), ForeignKey("crop_scans.id", ondelete="CASCADE"), index=True, nullable=False)
     disease_name: Mapped[str] = mapped_column(String(255), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)  # percentage e.g. 91.0
     rank: Mapped[int] = mapped_column(Integer, default=1)
