@@ -134,7 +134,59 @@ export const DiseaseScannerPage: React.FC = () => {
       {isAnalyzing ? (
         <AnalysisProgress />
       ) : result ? (
-        <DiseaseResultCard result={result} onScanAnother={handleReset} />
+        result.isCropMismatch ? (
+          <div className="p-6 sm:p-8 rounded-3xl bg-amber-500/10 dark:bg-amber-950/20 border-2 border-amber-500/30 dark:border-amber-500/40 text-slate-900 dark:text-white space-y-6 animate-fade-in shadow-xl backdrop-blur-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-500/20 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                      Crop Gating Safety Check
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-300 mt-0.5 tracking-tight">
+                    LEAF DOES NOT MATCH SELECTED CROP
+                  </h2>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 dark:bg-[#121c15]/80 p-5 rounded-2xl border border-amber-500/20 space-y-3">
+              <p className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100">
+                You selected <span className="font-extrabold text-amber-600 dark:text-amber-400">{result.selectedCrop || selectedCrop}</span>, but the uploaded leaf does not match this crop. Please upload a valid <span className="font-extrabold text-amber-600 dark:text-amber-400">{result.selectedCrop || selectedCrop}</span> leaf image.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                FarmGuard AI safety guardrails automatically prevent disease diagnosis when the uploaded leaf does not match your selected target crop. This safeguards against incorrect diagnostic findings.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Selected Target Crop</span>
+                <span className="text-base font-black text-slate-700 dark:text-slate-200 mt-1 block">
+                  {result.selectedCrop || selectedCrop}
+                </span>
+              </div>
+              <div className="p-4 rounded-xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60">
+                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Validation Status</span>
+                <span className="text-base font-black text-amber-700 dark:text-amber-300 mt-1 block">
+                  Does Not Match {result.selectedCrop || selectedCrop}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Button variant="primary" onClick={handleReset} icon={<RefreshCw className="w-4 h-4" />}>
+                Upload {result.selectedCrop || selectedCrop} Leaf Image
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <DiseaseResultCard result={result} onScanAnother={handleReset} />
+        )
       ) : previewUrl ? (
         <ImagePreview
           imageUrl={previewUrl}

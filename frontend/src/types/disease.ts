@@ -9,6 +9,13 @@ export interface DiseasePrediction {
 export interface DiseaseResult {
   id: string;
   cropName: string;
+  selectedCrop?: string;
+  detectedCrop?: string;
+  cropConfidence?: number;
+  cropMatch?: boolean;
+  predictionAllowed?: boolean;
+  isCropMismatch?: boolean;
+  errorCode?: string;
   primaryCondition: string;
   confidence: number;
   status: DiseaseStatus;
@@ -33,7 +40,13 @@ export interface ImageQualityCheck {
 
 export interface BackendPredictResponse {
   success: boolean;
-  status: 'success' | 'low_confidence' | 'unsupported_image' | 'error';
+  status: 'success' | 'low_confidence' | 'unsupported_image' | 'crop_mismatch' | 'error';
+  selectedCrop?: string | null;
+  detectedCrop?: string | null;
+  cropConfidence?: number | null;
+  cropMatch?: boolean | null;
+  predictionAllowed?: boolean | null;
+  errorCode?: string | null;
   crop?: string | null;
   disease?: string | null;
   class_name?: string | null;

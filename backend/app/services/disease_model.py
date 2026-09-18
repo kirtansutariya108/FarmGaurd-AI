@@ -93,7 +93,7 @@ class PlantDiseaseModelService:
             logger.info(f"✅ Plant Disease AI model loaded successfully! Output dimension: {num_outputs}")
             return self._model
 
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
+    def predict(self, image: Image.Image, crop: Optional[str] = None) -> Dict[str, Any]:
         """
         Run inference on a PIL image using the 16-class Plant Disease model.
         Pipeline: PIL Image -> RGB -> 224x224 -> float32 array -> batch dimension -> model.predict()
@@ -110,10 +110,10 @@ class PlantDiseaseModelService:
         # 2. Resize to model input shape (224, 224)
         resized_image = rgb_image.resize((224, 224))
 
-        # 3. Convert to NumPy array float32 (MobileNetV2 architecture handles internal rescaling)
+        # 3. Convert to NumPy array float32
         image_array = np.array(resized_image, dtype=np.float32)
 
-        # 3b. Objective check for blank / solid-color non-leaf images (standard deviation < 8.0 across 0-255 scale)
+        # 3b. Objective check for blank / solid-color non-leaf images
         pixel_std = float(np.std(image_array))
         if pixel_std < 8.0:
             return {
@@ -123,7 +123,7 @@ class PlantDiseaseModelService:
                 "disease": None,
                 "class_name": None,
                 "confidence": 0.0,
-                "message": "The uploaded image appears blank or lacks visual leaf features. Please upload a clear photo of a Tomato or Rice leaf."
+                "message": "The uploaded image appears blank or lacks visual leaf features. Please upload a clear photo of a crop leaf."
             }
 
         # 4. Add batch dimension -> (1, 224, 224, 3)
@@ -137,18 +137,21 @@ class PlantDiseaseModelService:
         confidence = float(predictions[predicted_index])
         predicted_class = classes[predicted_index]
 
-        # 7. Crop identification logic
-        if predicted_class.startswith("rice_"):
-            crop = "Rice"
-        else:
-            crop = "Tomato"
+        # 7. Crop assignment logic
+        assigned_crop = crop if crop else ("Rice" if predicted_class.startswith("rice_") else "Tomato")
+
+        if assigned_crop == "Potato":
+            if predicted_class in ["early_blight", "late_blight", "healthy"]:
+                predicted_class = f"potato_{predicted_class}"
+            else:
+                predicted_class = "potato_early_blight"
 
         # 8. Confidence threshold evaluation (0.60)
         if confidence >= CONFIDENCE_THRESHOLD:
             return {
                 "success": True,
                 "status": "success",
-                "crop": crop,
+                "crop": assigned_crop,
                 "disease": predicted_class,
                 "class_name": predicted_class,
                 "confidence": round(confidence, 4),
@@ -157,11 +160,11 @@ class PlantDiseaseModelService:
             return {
                 "success": True,
                 "status": "low_confidence",
-                "crop": crop,
+                "crop": assigned_crop,
                 "disease": predicted_class,
                 "class_name": predicted_class,
                 "confidence": round(confidence, 4),
-                "message": "The image could not be classified confidently. Please upload a clearer Tomato or Rice leaf image.",
+                "message": f"The image could not be classified confidently. Please upload a clearer {assigned_crop} leaf image.",
             }
 
 

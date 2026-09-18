@@ -43,11 +43,17 @@ class ImageQualityCheck(BaseModel):
 
 class PredictResponse(BaseModel):
     success: bool = True
-    status: Literal["success", "low_confidence", "unsupported_image", "error"] = "success"
+    status: Literal["success", "low_confidence", "unsupported_image", "crop_mismatch", "error"] = "success"
+    selectedCrop: Optional[str] = Field(None, serialization_alias="selectedCrop")
+    detectedCrop: Optional[str] = Field(None, serialization_alias="detectedCrop")
+    cropConfidence: Optional[float] = Field(None, serialization_alias="cropConfidence")
+    cropMatch: Optional[bool] = Field(None, serialization_alias="cropMatch")
+    predictionAllowed: bool = Field(False, serialization_alias="predictionAllowed")
+    errorCode: Optional[str] = Field(None, serialization_alias="errorCode")
     crop: Optional[str] = None
     disease: Optional[str] = None
     class_name: Optional[str] = None
-    confidence: float
+    confidence: float = 0.0
     message: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)
