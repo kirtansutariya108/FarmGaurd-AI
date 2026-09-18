@@ -117,11 +117,13 @@ app.include_router(api_router, prefix=settings.API_PREFIX)
 app.include_router(api_router)
 
 
-# 6. ML Plant Disease Prediction Endpoint
+# 6. ML Plant Disease Prediction Endpoint with Crop Gating
 import io
+from typing import Optional
 from PIL import Image
-from fastapi import File, UploadFile, HTTPException
+from fastapi import File, Form, UploadFile, HTTPException
 from app.services.disease_model import disease_model_service
+from app.services.crop_gate import crop_gate_service
 from app.schemas.disease import PredictResponse
 
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
@@ -131,7 +133,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 @app.post(
     "/api/predict",
     response_model=PredictResponse,
-    summary="Predict Plant Disease (16 Classes)",
+    summary="Predict Plant Disease with Crop Gating",
     tags=["Plant Disease Prediction"]
 )
 @app.post(
@@ -139,11 +141,18 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
     response_model=PredictResponse,
     include_in_schema=False
 )
-async def predict_plant_disease(file: UploadFile = File(...)):
+async def predict_plant_disease(
+    file: UploadFile = File(...),
+    crop: Optional[str] = Form(None),
+    selected_crop: Optional[str] = Form(None)
+):
     """
-    Analyze uploaded crop leaf photo using the trained 16-class MobileNetV2 plant disease neural network.
-    Accepts: JPG, JPEG, PNG, WEBP.
-    Returns predicted crop (Tomato/Rice), disease class, and confidence score.
+    Independent pre-diagnostic crop gating layer followed by crop-specific disease diagnosis.
+    1. Pre-diagnosis Crop Validation Gate:
+       Validates uploaded leaf image against selected crop (Rice, Tomato, Potato) or Other/Unknown.
+       Blocks execution immediately on crop mismatch, low confidence, or non-leaf input.
+    2. Disease Inference:
+       Runs ONLY when image matches selected crop with confidence >= 70%.
     """
     if not file or not file.filename:
         raise HTTPException(
@@ -181,9 +190,47 @@ async def predict_plant_disease(file: UploadFile = File(...)):
                 detail="Invalid or corrupted image file. Please upload a valid JPG, PNG, or WEBP image."
             )
 
-        # Run inference using singleton PlantDiseaseModelService
-        prediction = disease_model_service.predict(image)
-        return PredictResponse(**prediction)
+        # STAGE 1 & 2: Crop Validation Gate
+        chosen_crop = selected_crop or crop or "Rice"
+        gate_result = crop_gate_service.validate_crop(
+            image,
+            selected_crop=chosen_crop,
+            filename_hint=file.filename
+        )
+
+        # STAGE 3: Strict Gating Check - Block execution if mismatched or non-leaf
+        if not gate_result.prediction_allowed:
+            return PredictResponse(
+                success=False,
+                status="crop_mismatch" if gate_result.error_code == "CROP_MISMATCH" else "unsupported_image",
+                selectedCrop=gate_result.selected_crop,
+                detectedCrop=gate_result.detected_crop,
+                cropConfidence=gate_result.crop_confidence,
+                cropMatch=gate_result.crop_match,
+                predictionAllowed=False,
+                errorCode=gate_result.error_code,
+                crop=gate_result.detected_crop,
+                confidence=gate_result.crop_confidence,
+                message=gate_result.message,
+            )
+
+        # STAGE 4: Disease Model Diagnosis (ONLY runs for validated, compatible crop)
+        prediction = disease_model_service.predict(image, crop=gate_result.selected_crop)
+        return PredictResponse(
+            success=True,
+            status=prediction.get("status", "success"),
+            selectedCrop=gate_result.selected_crop,
+            detectedCrop=gate_result.detected_crop,
+            cropConfidence=gate_result.crop_confidence,
+            cropMatch=True,
+            predictionAllowed=True,
+            errorCode=None,
+            crop=prediction.get("crop", gate_result.selected_crop),
+            disease=prediction.get("disease"),
+            class_name=prediction.get("class_name"),
+            confidence=prediction.get("confidence", 0.0),
+            message=prediction.get("message"),
+        )
 
     except HTTPException:
         raise

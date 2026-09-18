@@ -32,9 +32,14 @@ export const CLASS_NAME_MAP: Record<string, string> = {
   'rice_leaf_blast': 'Leaf Blast',
   'rice_leaf_scald': 'Leaf Scald',
   'rice_narrow_brown_spot': 'Narrow Brown Spot',
+
+  // Potato (3 classes)
+  'potato_early_blight': 'Early Blight',
+  'potato_late_blight': 'Late Blight',
+  'potato_healthy': 'Healthy Foliage',
 };
 
-// ─── Agronomic Profiles for 16 Classes ─────────────────────────────────────────
+// ─── Agronomic Profiles ───────────────────────────────────────────────────────
 
 const DISEASE_PROFILES: Record<string, {
   status: DiseaseStatus;
@@ -43,6 +48,39 @@ const DISEASE_PROFILES: Record<string, {
   nextSteps: string[];
   description: string;
 }> = {
+  'potato_early_blight': {
+    status: 'Needs Attention',
+    isHealthy: false,
+    findings: 'Dark brown circular lesions with concentric target rings on older lower potato foliage — consistent with Alternaria solani (Early Blight).',
+    nextSteps: [
+      'Prune severely infected lower leaves touching damp soil.',
+      'Avoid overhead sprinkler irrigation; water root zone directly.',
+      'Apply protective organic or copper fungicide if lesions expand to canopy.',
+    ],
+    description: 'Fungal foliar disease causing dark concentric target-board lesions on potato leaves.',
+  },
+  'potato_late_blight': {
+    status: 'Critical',
+    isHealthy: false,
+    findings: 'Rapidly spreading dark water-soaked lesions with pale margins and white sporulation on leaf underside — characteristic of Phytophthora infestans (Late Blight).',
+    nextSteps: [
+      'Isolate infected plants and destroy blighted foliage immediately.',
+      'Cease all overhead watering to halt fungal spore distribution.',
+      'Consult local extension officer for recommended anti-sporulant fungicide.',
+    ],
+    description: 'Aggressive oomycete pathogen causing rapid water-soaked foliar necrosis on potato crops.',
+  },
+  'potato_healthy': {
+    status: 'Healthy-looking',
+    isHealthy: true,
+    findings: 'Deep green compound leaflets with uniform leaf blade architecture. No pathogen necrotic spots or chlorosis detected.',
+    nextSteps: [
+      'Maintain balanced drip irrigation and hilling practices.',
+      'Scout crop canopy every 5–7 days for early pest or disease activity.',
+      'Log this healthy scan as an agronomic benchmark.',
+    ],
+    description: 'Normal healthy potato foliage with vigorous canopy development.',
+  },
   'bacterial_spot': {
     status: 'Needs Attention',
     isHealthy: false,
@@ -234,6 +272,9 @@ export const diseaseService = {
   ): Promise<DiseaseResult> {
     const formData = new FormData();
     formData.append('file', imageFile);
+    const targetCrop = options.cropName || 'Rice';
+    formData.append('crop', targetCrop);
+    formData.append('selected_crop', targetCrop);
 
     const endpointUrl = `${API_BASE_URL}/api/predict`;
 
@@ -261,21 +302,57 @@ export const diseaseService = {
     }
 
     const data: BackendPredictResponse = await response.json();
+    const localImageUrl = URL.createObjectURL(imageFile);
 
-    // 1. Process Confidence Score (backend returns 0.0 - 1.0)
+    // 1. Process Confidence Score
     const rawConf = data.confidence ?? 0;
     const confidencePct = rawConf <= 1.0 ? parseFloat((rawConf * 100).toFixed(2)) : parseFloat(rawConf.toFixed(2));
 
-    // 2. Class Key & Human-Readable Mapping
+    // 2. Crop Mismatch Guard (Stops disease processing immediately)
+    const isCropMismatch = data.status === 'crop_mismatch' || data.errorCode === 'CROP_MISMATCH' || data.predictionAllowed === false;
+    if (isCropMismatch) {
+      const selectedCrop = data.selectedCrop || targetCrop;
+      const detectedCrop = data.detectedCrop || 'Other/Unknown';
+
+      return {
+        id: `scan-${Date.now()}`,
+        cropName: selectedCrop,
+        selectedCrop,
+        detectedCrop: 'Non-Matching Leaf',
+        cropConfidence: data.cropConfidence ?? 0,
+        cropMatch: false,
+        predictionAllowed: false,
+        isCropMismatch: true,
+        errorCode: data.errorCode || 'CROP_MISMATCH',
+        primaryCondition: 'Leaf Does Not Match Selected Crop',
+        confidence: 0,
+        status: 'Uncertain',
+        isLowConfidence: true,
+        isHealthy: false,
+        visualFindings: data.message || `The uploaded leaf image does not match your selected crop (${selectedCrop}). Please upload a clear photo of a ${selectedCrop} leaf.`,
+        nextSteps: [
+          `Capture and upload a clear, focused leaf photo of your selected ${selectedCrop} crop.`,
+          'Ensure the leaf is centered, evenly illuminated in daylight, and free from heavy glare or blur.',
+          `Make sure the image depicts the foliage of a ${selectedCrop} plant rather than a different crop or non-plant object.`
+        ],
+        topPredictions: [],
+        scannedAt: 'Just now',
+        imageUrl: localImageUrl,
+        farmId: options.farmId,
+        farmName: options.farmName,
+      };
+    }
+
+    // 3. Class Key & Human-Readable Mapping
     const classKey = (data.class_name || data.disease || '').toLowerCase().trim();
     const humanReadable = CLASS_NAME_MAP[classKey] || (classKey ? classKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Uncertain Condition');
 
-    // 3. Low Confidence & Unsupported Image Guard
-    const isUnsupported = data.status === 'unsupported_image';
+    // 4. Low Confidence & Unsupported Image Guard
+    const isUnsupported = data.status === 'unsupported_image' || data.errorCode === 'NON_LEAF_IMAGE' || data.errorCode === 'IMAGE_TOO_BLANK';
     const isLowConfidence = isUnsupported || data.status === 'low_confidence' || confidencePct < 60;
 
-    // 4. Determine Crop & Agronomic Profile
-    const detectedCrop = isUnsupported ? 'Unknown' : (data.crop || options.cropName || (classKey.startsWith('rice_') ? 'Rice' : 'Tomato'));
+    // 5. Determine Crop & Agronomic Profile
+    const detectedCrop = isUnsupported ? 'Unknown' : (data.crop || options.cropName || (classKey.startsWith('rice_') ? 'Rice' : classKey.startsWith('potato_') ? 'Potato' : 'Tomato'));
     const profile = DISEASE_PROFILES[classKey] || {
       status: (isLowConfidence ? 'Uncertain' : 'Needs Attention') as DiseaseStatus,
       isHealthy: !isUnsupported && classKey.includes('healthy'),
@@ -288,7 +365,7 @@ export const diseaseService = {
       description: `Pathology classification for ${humanReadable}.`,
     };
 
-    // 5. Build Top Predictions
+    // 6. Build Top Predictions
     const topPredictions: DiseasePrediction[] = isUnsupported ? [] : [
       {
         diseaseName: humanReadable,
@@ -297,24 +374,28 @@ export const diseaseService = {
       },
     ];
 
-    const localImageUrl = URL.createObjectURL(imageFile);
-
     return {
       id: `scan-${Date.now()}`,
       cropName: detectedCrop,
+      selectedCrop: data.selectedCrop || targetCrop,
+      detectedCrop,
+      cropConfidence: data.cropConfidence ?? 1.0,
+      cropMatch: true,
+      predictionAllowed: true,
+      isCropMismatch: false,
       primaryCondition: isUnsupported ? 'Unsupported Image Sample' : isLowConfidence ? 'Uncertain Classification' : humanReadable,
       confidence: isUnsupported ? 0 : confidencePct,
       status: isLowConfidence ? 'Uncertain' : profile.status,
       isLowConfidence,
       isHealthy: !isLowConfidence && profile.isHealthy,
       visualFindings: isUnsupported
-        ? (data.message || 'Image not recognized as a supported crop image. Please upload a clear photo of a Tomato or Rice leaf.')
+        ? (data.message || 'Image not recognized as a supported crop leaf image. Please upload a clear photo of a Rice, Tomato, or Potato leaf.')
         : isLowConfidence
         ? (data.message || 'The leaf image could not be classified with high confidence. Please upload a clear, focused photo.')
         : profile.findings,
       nextSteps: isUnsupported
         ? [
-            'Upload a clear, focused photograph of a Tomato or Rice leaf.',
+            'Upload a clear, focused photograph of a Rice, Tomato, or Potato leaf.',
             'Ensure natural daylight illumination without heavy glare or deep shadows.',
             'Position the camera 10–20 cm directly above the affected leaf lamina.',
           ]
